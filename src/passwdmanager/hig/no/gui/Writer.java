@@ -1,4 +1,3 @@
-
 package passwdmanager.hig.no.gui;
 
 import java.awt.BorderLayout;
@@ -77,14 +76,13 @@ import org.ejbca.cvc.CVCertificate;
 
 /**
  * A simple GUI application for creating password manager ID
- * 
+ *
  * @author Qingbao Guo
  */
 public class Writer extends JFrame implements ActionListener, APDUListener,
 		ChangeListener, CardListener {
 
 	// Constants for input event handling:
-
 	private static final String LOADCERT = "loadcert";
 
 	private static final String CLEARCERT = "clearcert";
@@ -152,7 +150,7 @@ public class Writer extends JFrame implements ActionListener, APDUListener,
 
 	/**
 	 * Construct the main GUI frame.
-	 * 
+	 *
 	 */
 	public Writer() {
 		super("Password Manager ID Maker");
@@ -221,7 +219,6 @@ public class Writer extends JFrame implements ActionListener, APDUListener,
 		tabbedPane.add("Data", Panel);
 
 		// Security things:
-
 		JPanel certPanel = new JPanel();
 		certPanel.setLayout(new GridBagLayout());
 		c = new GridBagConstraints();
@@ -425,7 +422,7 @@ public class Writer extends JFrame implements ActionListener, APDUListener,
 			JOptionPane.showMessageDialog(
 					this,
 					"Could not create an empty card, will exit. ("
-							+ e.getClass() + ")");
+					+ e.getClass() + ")");
 			System.exit(1);
 		}
 
@@ -529,7 +526,7 @@ public class Writer extends JFrame implements ActionListener, APDUListener,
 				String emtry = DataPanel.getValue("emtry");
 				passwdManager.putFile(BasicService.EF_DG3,
 						new DG_3_FILE(emtry).getEncoded(), eacDG3.isEnabled()
-								&& eacDG3.isSelected());
+						&& eacDG3.isSelected());
 			} catch (NumberFormatException nfe) {
 				nfe.printStackTrace();
 			}
@@ -593,7 +590,7 @@ public class Writer extends JFrame implements ActionListener, APDUListener,
 	/**
 	 * Upload the PasswdManager based on the data in the GUI. Note: there is
 	 * very little checks done on the presence of the (possibly required) data.
-	 * 
+	 *
 	 */
 	private void uploadPasswdManager() {
 		collectData();
@@ -615,64 +612,64 @@ public class Writer extends JFrame implements ActionListener, APDUListener,
 				.setFileFilter(net.sourceforge.scuba.util.Files.ZIP_FILE_FILTER);
 		int choice = fileChooser.showSaveDialog(getContentPane());
 		switch (choice) {
-		case JFileChooser.APPROVE_OPTION:
-			try {
-				File file = fileChooser.getSelectedFile();
-				FileOutputStream fileOut = new FileOutputStream(file);
-				ZipOutputStream zipOut = new ZipOutputStream(fileOut);
-				for (short fid : passwdManager.getFileList()) {
-					String eac = "";
-					if (fid == BasicService.EF_DG3 && eacDG3.isSelected()) {
-						eac = "eac";
+			case JFileChooser.APPROVE_OPTION:
+				try {
+					File file = fileChooser.getSelectedFile();
+					FileOutputStream fileOut = new FileOutputStream(file);
+					ZipOutputStream zipOut = new ZipOutputStream(fileOut);
+					for (short fid : passwdManager.getFileList()) {
+						String eac = "";
+						if (fid == BasicService.EF_DG3 && eacDG3.isSelected()) {
+							eac = "eac";
+						}
+						String entryName = Hex.shortToHexString(fid) + eac + ".bin";
+						InputStream dg = passwdManager.getInputStream(fid);
+						zipOut.putNextEntry(new ZipEntry(entryName));
+						int bytesRead;
+						byte[] dgBytes = new byte[1024];
+						while ((bytesRead = dg.read(dgBytes)) > 0) {
+							zipOut.write(dgBytes, 0, bytesRead);
+						}
+						zipOut.closeEntry();
 					}
-					String entryName = Hex.shortToHexString(fid) + eac + ".bin";
-					InputStream dg = passwdManager.getInputStream(fid);
-					zipOut.putNextEntry(new ZipEntry(entryName));
-					int bytesRead;
-					byte[] dgBytes = new byte[1024];
-					while ((bytesRead = dg.read(dgBytes)) > 0) {
-						zipOut.write(dgBytes, 0, bytesRead);
+					byte[] keySeed = passwdManager.getKeySeed();
+					if (keySeed != null) {
+						String entryName = "keyseed.bin";
+						zipOut.putNextEntry(new ZipEntry(entryName));
+						zipOut.write(keySeed);
+						zipOut.closeEntry();
 					}
-					zipOut.closeEntry();
+					PrivateKey aaPrivateKey = passwdManager.getAAPrivateKey();
+					if (aaPrivateKey != null) {
+						String entryName = "aaprivatekey.der";
+						zipOut.putNextEntry(new ZipEntry(entryName));
+						zipOut.write(aaPrivateKey.getEncoded());
+						zipOut.closeEntry();
+					}
+					PrivateKey caPrivateKey = passwdManager.getEACPrivateKey();
+					if (caPrivateKey != null) {
+						String entryName = "caprivatekey.der";
+						zipOut.putNextEntry(new ZipEntry(entryName));
+						zipOut.write(caPrivateKey.getEncoded());
+						zipOut.closeEntry();
+					}
+					CVCertificate cvCert = passwdManager.getCVCertificate();
+					if (cvCert != null) {
+						String entryName = "cacert.cvcert";
+						zipOut.putNextEntry(new ZipEntry(entryName));
+						zipOut.write(cvCert.getDEREncoded());
+						zipOut.closeEntry();
+					}
+					zipOut.finish();
+					zipOut.close();
+					fileOut.flush();
+					fileOut.close();
+					break;
+				} catch (IOException e) {
+					e.printStackTrace();
 				}
-				byte[] keySeed = passwdManager.getKeySeed();
-				if (keySeed != null) {
-					String entryName = "keyseed.bin";
-					zipOut.putNextEntry(new ZipEntry(entryName));
-					zipOut.write(keySeed);
-					zipOut.closeEntry();
-				}
-				PrivateKey aaPrivateKey = passwdManager.getAAPrivateKey();
-				if (aaPrivateKey != null) {
-					String entryName = "aaprivatekey.der";
-					zipOut.putNextEntry(new ZipEntry(entryName));
-					zipOut.write(aaPrivateKey.getEncoded());
-					zipOut.closeEntry();
-				}
-				PrivateKey caPrivateKey = passwdManager.getEACPrivateKey();
-				if (caPrivateKey != null) {
-					String entryName = "caprivatekey.der";
-					zipOut.putNextEntry(new ZipEntry(entryName));
-					zipOut.write(caPrivateKey.getEncoded());
-					zipOut.closeEntry();
-				}
-				CVCertificate cvCert = passwdManager.getCVCertificate();
-				if (cvCert != null) {
-					String entryName = "cacert.cvcert";
-					zipOut.putNextEntry(new ZipEntry(entryName));
-					zipOut.write(cvCert.getDEREncoded());
-					zipOut.closeEntry();
-				}
-				zipOut.finish();
-				zipOut.close();
-				fileOut.flush();
-				fileOut.close();
+			default:
 				break;
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		default:
-			break;
 		}
 	}
 
@@ -682,22 +679,22 @@ public class Writer extends JFrame implements ActionListener, APDUListener,
 				.setFileFilter(net.sourceforge.scuba.util.Files.ZIP_FILE_FILTER);
 		int choice = fileChooser.showOpenDialog(getContentPane());
 		switch (choice) {
-		case JFileChooser.APPROVE_OPTION:
-			try {
-				if (privateKey != null) {
-					passwdManager = new PasswdManager(
-							fileChooser.getSelectedFile(), true,
-							new SimpleDocumentSigner(privateKey));
-				} else {
-					passwdManager = new PasswdManager(
-							fileChooser.getSelectedFile());
+			case JFileChooser.APPROVE_OPTION:
+				try {
+					if (privateKey != null) {
+						passwdManager = new PasswdManager(
+								fileChooser.getSelectedFile(), true,
+								new SimpleDocumentSigner(privateKey));
+					} else {
+						passwdManager = new PasswdManager(
+								fileChooser.getSelectedFile());
+					}
+					processData();
+				} catch (IOException ioe) {
+					ioe.printStackTrace();
 				}
-				processData();
-			} catch (IOException ioe) {
-				ioe.printStackTrace();
-			}
-		default:
-			break;
+			default:
+				break;
 		}
 	}
 
@@ -764,8 +761,9 @@ public class Writer extends JFrame implements ActionListener, APDUListener,
 
 	private void loadCertificate() {
 		File f = GUIutil.getFile(this, "Load Certificate", false);
-		if (f == null)
+		if (f == null) {
 			return;
+		}
 		certificate = Files.readCertFromFile(f);
 		if (certificate != null) {
 			cert.setText(certificate.getIssuerDN().getName());
@@ -792,8 +790,9 @@ public class Writer extends JFrame implements ActionListener, APDUListener,
 
 	private void loadKey() {
 		File f = GUIutil.getFile(this, "Load Key", false);
-		if (f == null)
+		if (f == null) {
 			return;
+		}
 		privateKey = (RSAPrivateKey) Files.readRSAPrivateKeyFromFile(f);
 		if (privateKey != null) {
 			key.setText(privateKey.getAlgorithm() + " "
@@ -843,9 +842,8 @@ public class Writer extends JFrame implements ActionListener, APDUListener,
 
 	/**
 	 * Build up the frame and start up the application.
-	 * 
-	 * @param args
-	 *            should be none (ignored)
+	 *
+	 * @param args should be none (ignored)
 	 */
 	public static void main(String[] args) {
 		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
@@ -882,8 +880,9 @@ public class Writer extends JFrame implements ActionListener, APDUListener,
 			persoService = null;
 		}
 		if (persoService != null) {
-			if (uploadItem != null)
+			if (uploadItem != null) {
 				uploadItem.setEnabled(true);
+			}
 		}
 
 	}
@@ -892,8 +891,9 @@ public class Writer extends JFrame implements ActionListener, APDUListener,
 	public void PasswdCardRemoved(CardActionEvents ce) {
 		System.out.println("Removed passwd card.");
 		persoService = null;
-		if (uploadItem != null)
+		if (uploadItem != null) {
 			uploadItem.setEnabled(false);
+		}
 
 	}
 
